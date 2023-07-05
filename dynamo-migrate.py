@@ -1,5 +1,6 @@
 import sys
 import boto3
+from botocore.exceptions import ClientError
 
 ## USAGE ############################################################################
 ## python3 dynamo.py <Source_Table> <destination table>                            ## 
@@ -27,11 +28,21 @@ def dynamo_bulk_writer():
     dynamodb = session.resource('dynamodb', region_name='us-west-2')
     table = dynamodb.Table(sys.argv[2])
     print("Importing items into: " + str(sys.argv[2]))
-    for table_item in dynamo_bulk_reader():
+    table_items = dynamo_bulk_reader()
+    total_records = len(table_items)
+    for table_item in table_items:
+        count = 1
         with table.batch_writer() as batch:
-            response = batch.put_item(
-            Item=table_item
-            )
+            try:
+                print("Importing:", str(count), "/", str(total_records))
+                print(table_item)
+                response = batch.put_item(
+                Item=table_item
+                )
+                count = count + 1
+            except ClientError as e:
+                print("Failed to import item")
+                print(e)
 
     print("Finished importing items...")
 if __name__ == '__main__':
